@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Загрузка салона</title>
+</head>
+<body>
+
+<h1>Загрузка салона...</h1>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const salonId = params.get("salon_id");
+  const token = localStorage.getItem("salon_token");
+
+  async function smartRouter() {
+    if (!salonId) {
+      location.href = "/admin";
+      return;
+    }
+
+    const salon = await fetch(`/api/salons/${salonId}`, {
+      headers: { Authorization: "Bearer " + token }
+    }).then(r => r.json());
+
+    const services = await fetch(`/api/salons/${salonId}/services`, {
+      headers: { Authorization: "Bearer " + token }
+    }).then(r => r.json());
+
+    const masters = salon.masters || [];
+
+    if (!masters.length || !services.length) {
+      // визард
+      location.href = `/admin/setup/masters.html?salon_id=${salonId}`;
+    } else {
+      // дашборд
+      location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+    }
+  }
+
+  smartRouter();
+</script>
+
+</body>
+</html>

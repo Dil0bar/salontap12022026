@@ -1,0 +1,533 @@
+
+
+
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&family=Playfair+Display&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/dashboard.css">
+
+
+
+<header class="site-header sticky">
+  <div class="header-inner">
+    <h1 class="logo">
+      <a href="/" class="salontap" style="text-decoration:none;">Salon Tap</a>
+    </h1>
+
+    <nav class="header-nav">
+      <a class="nav-link" href="/admin">Админ</a>
+      <a class="nav-link" href="/contacts.html">Контакты</a>
+      <div class="header-search">
+        <input id="adminSearch"
+          type="text"
+          placeholder="Поиск салона, услуги или мастера">
+
+      </div>
+
+      <a class="nav-link" href="https://t.me/jamilaabdukarimova" target="_blank">Помощь</a>
+    </nav>
+  </div>
+</header>
+
+
+<div class="container admin-page">
+
+  <h1 class="page-title">Дашборд салона</h1>
+
+  <div class="stats">
+   
+    <div id="stat-masters" class="admin card"></div>
+    <div id="stat-services" class="admin card"></div>
+    <div id="stat-slots" class="admin card"></div>
+  </div>
+
+  <div class="dashboard-tabs">
+    <button class="btn tab-btn active" data-tab="schedule">Расписание</button>
+    <button class="btn tab-btn" data-tab="masters">Мастера</button>
+    <button class="btn tab-btn" data-tab="services">Услуги</button>
+  </div>
+
+
+    <div id="tab-schedule" class="tab-section" style="display:none;">
+        <div class="admin-section">
+            <h2>Расписание на неделю</h2>
+
+            <div class="week-nav">
+                <button class="btn small" onclick="prevWeek()">←</button>
+                <strong id="weekLabel"></strong>
+                <button class="btn small" onclick="nextWeek()">→</button>
+            </div>
+
+            
+
+            <div id="searchResultLabel" class="search-label" style="display:none;"></div>
+
+           <div class="schedule-filters modern">
+
+            <div class="filter-box">
+              <label>Мастер</label>
+              <select id="filterMaster">
+                <option value="">Все мастера</option>
+              </select>
+            </div>
+
+            <div class="filter-box">
+              <label>Дата</label>
+              <input type="date" id="filterDate">
+            </div>
+
+            <div class="filter-box">
+              <label>Статус</label>
+              <select id="filterStatus">
+                <option value="">Любой</option>
+                <option value="taken">Занято</option>
+                <option value="free">Свободно</option>
+              </select>
+            </div>
+
+          </div>
+
+
+            <div id="weekSchedule"></div>
+
+            <button class="btn" onclick="goSchedule()">+ Добавить слоты</button>
+        </div>
+
+    </div>
+
+    <div id="tab-masters" class="tab-section">
+        <div class="admin-section">
+            <h2>Мастера</h2>
+            <div class="table-wrap">
+            <table class="gg-table">
+                <tbody id="mastersList"></tbody>
+            </table>
+            </div>
+            <button class="btn add-slots-btn" onclick="goMasters()">+ Добавить мастера</button>
+        </div>
+    </div>
+    <div id="tab-services" class="tab-section" style="display:none;">
+        <div class="admin-section">
+            <h2>Услуги</h2>
+            <div class="table-wrap">
+            <table class="gg-table">
+                <tbody id="servicesList"></tbody>
+            </table>
+            </div>
+            <button class="btn" onclick="goServices()">+ Добавить услугу</button>
+        </div>
+    </div>
+
+  
+</div>
+
+
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">Salon Tap</div>
+      <p class="footer-desc">Умная платформа онлайн-записи в салоны красоты.</p>
+    </div>
+
+    <div class="footer-links">
+      <a href="/#about">О платформе</a>
+      <a href="#contacts">Контакты</a>
+      <a href="https://t.me/jamilaabdukarimova" target="_blank">Поддержка</a>
+    </div>
+
+    <div class="footer-social">
+      <a href="https://www.instagram.com/salontap.uz" target="_blank">Instagram</a>
+      <a href="https://t.me/salontap_uz" target="_blank">Telegram</a>
+      <a href="tel:+998888117799">+998888117799</a>
+    </div>
+  </div>
+
+
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+
+
+
+<script>
+
+
+function applyScheduleFilters(){
+
+  const master = document.getElementById("filterMaster").value;
+  const date   = document.getElementById("filterDate").value;
+  const status = document.getElementById("filterStatus").value;
+
+  let filtered = allSlots;
+
+  if(master){
+    filtered = filtered.filter(s => s.master_name === master);
+  }
+
+  if(date){
+    filtered = filtered.filter(s => s.date === date);
+  }
+
+  if(status === "taken"){
+    filtered = filtered.filter(s => s.is_taken);
+  }
+
+  if(status === "free"){
+    filtered = filtered.filter(s => !s.is_taken);
+  }
+
+  renderWeek(filtered);
+}
+
+
+
+const params = new URLSearchParams(location.search);
+const salonId = params.get("salon_id");
+const token = localStorage.getItem("salon_token");
+let allSlots = [];
+
+
+
+
+async function loadDashboard() {
+  const salon = await fetch(`/api/salons/${salonId}`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  const services = await fetch(`/api/salons/${salonId}/services`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  document.getElementById("stat-masters").innerText =
+    "Мастера: " + salon.masters.length;
+
+  document.getElementById("stat-services").innerText =
+    "Услуги: " + services.length;
+
+  document.getElementById("stat-slots").innerText =
+    "Слоты: " + allSlots.length;
+
+
+  document.getElementById("mastersList").innerHTML =
+    salon.masters.map(m => `
+        <tr>
+        <td>${m.name}</td>
+        <td>
+            <button class="btn danger small" onclick="deleteMaster(${m.id})">✖</button>
+        </td>
+
+        
+        </tr>
+    `).join("");
+
+    const masterFilter = document.getElementById("filterMaster");
+      masterFilter.innerHTML =
+        '<option value="">Все мастера</option>' +
+        salon.masters.map(m =>
+          `<option value="${m.name}">${m.name}</option>`
+        ).join("");
+
+
+  document.getElementById("servicesList").innerHTML =
+    services.map(s => `
+        <tr>
+        <td>${s.name}</td>
+        <td>
+            <button class="btn danger small" onclick="deleteService(${s.id})">✖</button>
+        </td>
+        </tr>
+    `).join("");
+
+}
+
+async function deleteMaster(id) {
+  if (!confirm("Удалить мастера?")) return;
+
+  await fetch(`/api/masters/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+
+  loadDashboard();
+  loadWeek();
+}
+
+
+async function deleteService(id) {
+  if (!confirm("Удалить услугу?")) return;
+
+  await fetch(`/api/services/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+
+  loadDashboard();
+  loadWeek();
+}
+
+
+function goMasters() {
+  location.href = `/admin/setup/masters.html?salon_id=${salonId}`;
+}
+function goServices() {
+  location.href = `/admin/setup/services.html?salon_id=${salonId}`;
+}
+function goSchedule() {
+  location.href = `/admin/setup/schedule.html?salon_id=${salonId}`;
+}
+
+
+function renderToday(slots) {
+  const today = new Date().toISOString().slice(0,10);
+  const list = document.getElementById("todaySlots");
+
+  const todaySlots = slots.filter(s => s.date === today);
+
+  if (!todaySlots.length) {
+    list.innerHTML = "<li>Сегодня слотов нет</li>";
+    return;
+  }
+
+  list.innerHTML = todaySlots.map(s => `
+    <li>
+      ${s.time} — ${s.master_name} — ${s.service_name}
+      ${s.is_taken ? "❌" : "✅"}
+    </li>
+  `).join("");
+}
+
+
+function getMonday(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  if (day !== 1) d.setHours(-24 * (day - 1));
+  return d.toISOString().slice(0,10);
+}
+
+let weekStart = getMonday();
+
+
+
+function renderWeek(slots) {
+  const box = document.getElementById("weekSchedule");
+
+  const start = new Date(weekStart);
+  const end = new Date(weekStart);
+  end.setDate(end.getDate() + 6);
+
+  const days = {};
+
+  slots.forEach(s => {
+    const d = new Date(s.date);
+    if (d >= start && d <= end) {
+      if (!days[s.date]) days[s.date] = [];
+      days[s.date].push(s);
+    }
+  });
+
+  const sortedDates = Object.keys(days)
+    .sort((a, b) => new Date(a) - new Date(b));
+
+  if (!sortedDates.length) {
+    box.innerHTML = "<p>На этой неделе слотов нет</p>";
+    return;
+  }
+
+  box.innerHTML = sortedDates.map(date => `
+     
+    <h3>${formatDate(date)}</h3>
+
+    <div class="table-wrap">
+      <table class="gg-table">
+        <thead>
+          <tr>
+            <th>Время</th>
+            <th>Мастер</th>
+            <th>Услуга</th>
+            <th>Цена</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${days[date].map(s => `
+            <tr class="slot-row">
+              <td>${s.time}</td>
+              <td class="master-badge">${s.master_name}</td>
+              <td class="svc-title">${s.service_name}</td>
+              <td>${s.price} сум</td>
+
+             <td>
+                ${
+                  s.is_taken
+                    ? `<div class="status taken">
+                          <div class="taken-label">Занято</div>
+                          <div class="taken-client">${s.client_name || ''}</div>
+                          <div class="taken-phone">${s.client_phone || ''}</div>
+                      </div>`
+                    : `<span class="status free">свободно</span>`
+                }
+              </td>
+
+
+              <td>
+                <button class="btn danger small" onclick="deleteSlot(${s.id})">✖</button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `).join("");
+
+  document.getElementById("weekLabel").innerText =
+  `${start.toISOString().slice(0,10)} – ${end.toISOString().slice(0,10)}`;
+
+
+ }
+
+
+
+
+async function loadWeek() {
+  const salon = await fetch(`/api/salons/${salonId}`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  allSlots = [];
+
+  for (const m of salon.masters) {
+    const res = await fetch(`/api/masters/${m.id}/schedule/full`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const slots = await res.json();
+    allSlots = allSlots.concat(slots);
+  }
+
+  // ВСЕГДА считаем диапазон
+  const start = new Date(weekStart);
+  const end = new Date(weekStart);
+  end.setDate(end.getDate() + 6);
+
+  document.getElementById("weekLabel").innerText =
+    `${start.toISOString().slice(0,10)} – ${end.toISOString().slice(0,10)}`;
+
+  document.getElementById("stat-slots").innerText =
+    "Слоты: " + allSlots.length;
+
+    
+
+  renderWeek(allSlots);
+}
+
+
+
+/// ===== Tabs =====
+function openTab(tab) {
+  // скрыть всё
+  document.querySelectorAll(".tab-section").forEach(el => el.style.display = "none");
+  // показать нужное
+  const el = document.getElementById("tab-" + tab);
+  if (el) el.style.display = "block";
+
+  // активная кнопка
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn) btn.classList.add("active");
+}
+
+// клики по вкладкам
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => openTab(btn.dataset.tab));
+});
+
+// по умолчанию расписание
+openTab("schedule");
+
+async function deleteSlot(id) {
+  if (!confirm("Удалить слот?")) return;
+
+  await fetch(`/api/schedule/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+
+  loadWeek();
+}
+
+
+
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+
+
+  const days = [
+    "Воскресенье",
+    "Понедельник",
+    "Вторник",
+    "Среда",
+    "Четверг",
+    "Пятница",
+    "Суббота"
+  ];
+
+  const months = [
+    "января","февраля","марта","апреля","мая","июня",
+    "июля","августа","сентября","октября","ноября","декабря"
+  ];
+
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+
+function nextWeek() {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() + 7);
+  weekStart = d.toISOString().slice(0,10);
+  loadWeek();
+}
+
+function prevWeek() {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() - 7);
+  weekStart = d.toISOString().slice(0,10);
+  loadWeek();
+}
+
+document.getElementById("adminSearch").addEventListener("input", e => {
+
+  const q = e.target.value.toLowerCase().trim();
+  const label = document.getElementById("searchResultLabel");
+
+  if(!q){
+    label.style.display = "none";
+    renderWeek(allSlots);
+    return;
+  }
+
+  const filtered = allSlots.filter(s =>
+      (s.master_name || "").toLowerCase().includes(q) ||
+      (s.service_name || "").toLowerCase().includes(q) ||
+      (s.client_name || "").toLowerCase().includes(q) ||
+      (s.client_phone || "").includes(q)
+  );
+
+  label.style.display = "block";
+  label.innerHTML = `Результат поиска: <b>${q}</b> (${filtered.length})`;
+
+  renderWeek(filtered);
+});
+
+document.getElementById("filterMaster").onchange = applyScheduleFilters;
+document.getElementById("filterDate").onchange   = applyScheduleFilters;
+document.getElementById("filterStatus").onchange = applyScheduleFilters;
+
+loadWeek();
+loadDashboard();
+
+
+</script>

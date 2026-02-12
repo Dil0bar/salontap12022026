@@ -1,0 +1,158 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const sqlite3 = require("sqlite3").verbose();
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
+const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, JWT_SECRET, PORT } = require("./config");
+const TelegramBot = TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_TOKEN !== "REPLACE_WITH_YOUR_NEW_TOKEN" ? require("node-telegram-bot-api") : null;
+const bot = TelegramBot ? new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false }) : null;
+
+const app = express();
+app.use(bodyParser.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+const dbFile = path.join(__dirname, "salon.db");
+const db = new sqlite3.Database(dbFile);
+
+// init DB from db_init.sql if empty
+const initSql = fs.readFileSync(path.join(__dirname, "db_init.sql"), "utf8");
+db.exec(initSql);
+
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: "Missing auth" });
+  const token = header.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+// signup
+app.post("/api/signup", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "email and password required" });
+  const hash = await bcrypt.hash(password, 10);
+  db.run("INSERT INTO users (email, password_hash) VALUES (?, ?)", [email, hash], function(err) {
+    if (err) return res.status(400).json({ error: "User exists or DB error" });
+    const user = { id: this.lastID, email };
+    const token = jwt.sign(user, JWT_SECRET);
+    res.json({ ok: true, token });
+  });
+});
+
+// login
+app.post("/api/login", (req, res) => {
+  const { email, password } = req.body;
+  db.get("SELECT * FROM users WHERE email = ?", [email], async (err, row) => {
+    if (err || !row) return res.status(400).json({ error: "Invalid credentials" });
+    const match = await bcrypt.compare(password, row.password_hash);
+    if (!match) return res.status(400).json({ error: "Invalid credentials" });
+    const token = jwt.sign({ id: row.id, email: row.email }, JWT_SECRET);
+    res.json({ ok: true, token });
+  });
+});
+
+// create salon (owner)
+app.post("/api/salons", authMiddleware, (req, res) => {
+  const { name, address, short_desc, full_desc } = req.body;
+  db.run("INSERT INTO salons (owner_id, name, address, short_desc, full_desc) VALUES (?, ?, ?, ?, ?)",
+    [req.user.id, name, address, short_desc, full_desc], function(err) {
+      if (err) return res.status(500).json({ error: "DB error" });
+      res.json({ ok: true, salon_id: this.lastID });
+    });
+});
+
+// get salons list (public)
+app.get("/api/salons", (req, res) => {
+  db.all("SELECT * FROM salons", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    res.json(rows);
+  });
+});
+
+// get salon details with masters
+app.get("/api/salons/:id", (req, res) => {
+  const id = req.params.id;
+  db.get("SELECT * FROM salons WHERE id = ?", [id], (err, salon) => {
+    if (err || !salon) return res.status(404).json({ error: "Not found" });
+    db.all("SELECT * FROM masters WHERE salon_id = ?", [id], (err2, masters) => {
+      if (err2) return res.status(500).json({ error: "DB error" });
+      res.json({ salon, masters });
+    });
+  });
+});
+
+// add master (only owner)
+app.post("/api/salons/:id/masters", authMiddleware, (req, res) => {
+  const salon_id = req.params.id;
+  const { name } = req.body;
+  db.get("SELECT * FROM salons WHERE id = ?", [salon_id], (err, salon) => {
+    if (err || !salon) return res.status(404).json({ error: "Salon not found" });
+    if (salon.owner_id !== req.user.id) return res.status(403).json({ error: "Forbidden" });
+    db.run("INSERT INTO masters (salon_id, name) VALUES (?, ?)", [salon_id, name], function(err2) {
+      if (err2) return res.status(500).json({ error: "DB error" });
+      res.json({ ok: true, master_id: this.lastID });
+    });
+  });
+});
+
+// add schedule slots for master (owner)
+app.post("/api/masters/:id/schedule", authMiddleware, (req, res) => {
+  const master_id = req.params.id;
+  const { slots } = req.body; // [{date: 'YYYY-MM-DD', time:'HH:MM'}, ...]
+  if (!Array.isArray(slots)) return res.status(400).json({ error: "slots array required" });
+  db.get("SELECT m.*, s.owner_id FROM masters m JOIN salons s ON m.salon_id = s.id WHERE m.id = ?", [master_id], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: "Master not found" });
+    if (row.owner_id !== req.user.id) return res.status(403).json({ error: "Forbidden" });
+    const stmt = db.prepare("INSERT INTO schedule (master_id, date, time) VALUES (?, ?, ?)");
+    db.serialize(() => {
+      slots.forEach(slot => stmt.run(master_id, slot.date, slot.time));
+      stmt.finalize();
+      res.json({ ok: true });
+    });
+  });
+});
+
+// get available slots for master on a date
+app.get("/api/masters/:id/available", (req, res) => {
+  const master_id = req.params.id;
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ error: "date required YYYY-MM-DD" });
+  db.all("SELECT * FROM schedule WHERE master_id = ? AND date = ? AND is_taken = 0", [master_id, date], (err, rows) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    res.json(rows);
+  });
+});
+
+// book a slot
+app.post("/api/book", (req, res) => {
+  const { schedule_id, client_name, client_phone } = req.body;
+  if (!schedule_id || !client_phone) return res.status(400).json({ error: "schedule_id and client_phone required" });
+  db.get("SELECT s.*, m.name as master_name, sa.name as salon_name FROM schedule s JOIN masters m ON s.master_id = m.id JOIN salons sa ON m.salon_id = sa.id WHERE s.id = ?", [schedule_id], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: "Slot not found" });
+    if (row.is_taken) return res.status(400).json({ error: "Slot already taken" });
+    db.run("UPDATE schedule SET is_taken = 1 WHERE id = ?", [schedule_id], function(err2) {
+      if (err2) return res.status(500).json({ error: "DB error" });
+      db.run("INSERT INTO bookings (schedule_id, client_name, client_phone) VALUES (?, ?, ?)", [schedule_id, client_name || '', client_phone], function(err3) {
+          if (err3) return res.status(500).json({ error: "DB error" });
+          const text = `Новая запись!\nСалон: ${row.salon_name}\nМастер: ${row.master_name}\nДата: ${row.date}\nВремя: ${row.time}\nКлиент: ${client_name||'не указан'}\nТелефон: ${client_phone}`;
+          if (bot && TELEGRAM_CHAT_ID && TELEGRAM_CHAT_ID !== "REPLACE_WITH_CHAT_ID") {
+            bot.sendMessage(TELEGRAM_CHAT_ID, text).catch(err => console.error("TG send error:", err));
+          } else {
+            console.log("Telegram not configured. Message would be:", text);
+          }
+          res.json({ ok: true });
+      });
+    });
+  });
+});
+
+app.listen(PORT, () => console.log("Server listening on", PORT));

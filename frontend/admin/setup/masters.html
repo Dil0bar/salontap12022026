@@ -1,0 +1,117 @@
+<link rel="stylesheet" href="setup.css">
+<h1> Мастера</h1>
+
+<p> Добавьте мастеров вашего салона </p>
+
+<div class="card step-card">
+
+  <div class="form-row">
+    <label>Имя мастера</label>
+    <input id="masterName" placeholder="Например: Наргиза">
+  </div>
+
+  <button class="btn primary" onclick="addMaster()">
+    ➕ Добавить мастера
+  </button>
+
+  <div id="mastersList" class="masters-grid"></div>
+
+  <div class="nav-buttons">
+    <button class="btn back" onclick="goBack()">← Назад</button>
+    <button id="nextBtn" class="btn finish" onclick="goNext()"></button>
+  </div>
+
+
+
+</div>
+
+<script>
+ const params = new URLSearchParams(location.search);
+    const salonId = params.get("salon_id");
+    const token = localStorage.getItem("salon_token");
+    const mode = params.get("mode") || "dashboard";
+
+    const nextBtn = document.getElementById("nextBtn");
+
+     // меняем текст кнопки
+    if (mode === "wizard") {
+    nextBtn.textContent = "Далее →";
+    } else {
+    nextBtn.textContent = "Вернуться в дашборд";
+    }
+
+    function goNext() {
+    if (mode === "wizard") {
+        // следующий шаг визарда
+        location.href = `/admin/setup/services.html?salon_id=${salonId}&mode=wizard`;
+    } else {
+        // обычный режим
+        location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+    }
+    }
+
+    function goBack() {
+    if (mode === "wizard") {
+        location.href = `/admin/setup/services.html?salon_id=${salonId}&mode=wizard`;
+    } else {
+        location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+    }
+    }
+
+    
+
+    async function loadMasters() {
+    const salon = await fetch(`/api/salons/${salonId}`, {
+        headers: { Authorization: "Bearer " + token }
+    }).then(r => r.json());
+
+    renderMasters(salon.masters);
+    }
+
+    function renderMasters(list) {
+    document.getElementById("mastersList").innerHTML =
+        list.map(m => `
+        <div class="master-card">
+            ${m.name}
+            <button onclick="deleteMaster(${m.id})">✖</button>
+        </div>
+        `).join("");
+    }
+
+    async function addMaster() {
+    const name = masterName.value.trim();
+    if (!name) return alert("Введите имя");
+
+    await fetch(`/api/salons/${salonId}/masters`, {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ name })
+    });
+
+    masterName.value = "";
+    loadMasters();
+    }
+
+    async function deleteMaster(id) {
+    if (!confirm("Удалить мастера?")) return;
+
+    await fetch(`/api/masters/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    loadMasters();
+    }
+
+   
+
+
+   
+
+    loadMasters();
+
+</script>
+

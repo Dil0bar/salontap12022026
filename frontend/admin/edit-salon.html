@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Edit salon</title>
+<link rel="stylesheet" href="/css/styles.css">
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey=6cd194e0-41c7-41ad-956e-9ec538cd1c2d&lang=ru_RU"></script>
+
+
+<style>
+#map-edit{
+  height:420px;
+  margin-top:12px;
+  border-radius:14px;
+  overflow:hidden;
+}
+</style>
+</head>
+<body>
+
+<h2>Редактирование салона</h2>
+
+<input id="edit-name" placeholder="Название">
+<textarea id="edit-desc" placeholder="Описание"></textarea>
+<input id="edit-address" placeholder="Адрес">
+
+<div id="map-edit"></div>
+
+<button id="saveSalon">Сохранить</button>
+
+<script>
+(function () {
+
+const API="/api";
+const tokenKey="salon_token";
+
+const $=(id)=>document.getElementById(id);
+
+let mapEdit=null;
+let markerEdit=null;
+let lastCoords=null;
+
+function getToken(){
+  const token=localStorage.getItem(tokenKey);
+  return token;
+}
+
+async function apiFetch(method,url,body){
+  const headers={"Content-Type":"application/json"};
+  const token=getToken();
+  if(token) headers["Authorization"]="Bearer "+token;
+
+  const res=await fetch(API+url,{
+    method,
+    headers,
+    body:body?JSON.stringify(body):undefined
+  });
+
+  const data=await res.json().catch(()=>null);
+  if(!res.ok) throw data || {error:"API error"};
+  return data;
+}
+
+function getId(){
+  return new URLSearchParams(location.search).get("id");
+}
+
+const id=getId();
+
+const nameEl=$("edit-name");
+const descEl=$("edit-desc");
+const addressEl=$("edit-address");
+const saveBtn=$("saveSalon");
+
+if(!id){
+  alert("Нет id салона");
+  return;
+}
+
+function initMap(lat,lng){
+
+  ymaps.ready(()=>{
+
+    const center=[lat||41.31,lng||69.24];
+
+    mapEdit=new ymaps.Map("map-edit",{center,zoom:14});
+
+    markerEdit=new ymaps.Placemark(center,{}, {draggable:true});
+    mapEdit.geoObjects.add(markerEdit);
+
+    lastCoords=center;
+
+    markerEdit.events.add("dragend", async ()=>{
+      lastCoords=markerEdit.geometry.getCoordinates();
+      addressEl.value=await reverseGeocode(lastCoords);
+    });
+
+    mapEdit.events.add("click", async (e)=>{
+      lastCoords=e.get("coords");
+      markerEdit.geometry.setCoordinates(lastCoords);
+      addressEl.value=await reverseGeocode(lastCoords);
+    });
+
+  });
+
+}
+
+async function reverseGeocode(coords){
+  const res=await ymaps.geocode(coords);
+  const obj=res.geoObjects.get(0);
+  return obj?obj.getAddressLine():"";
+}
+
+async function loadSalon(){
+
+  const data=await apiFetch("GET",`/salons/${id}`);
+  const salon=data.salon||data;
+
+  nameEl.value=salon.name||"";
+  descEl.value=salon.short_desc||salon.full_desc||"";
+  addressEl.value=salon.address||"";
+
+  initMap(salon.lat,salon.lng);
+
+}
+
+async function saveSalon(){
+
+  if(!lastCoords){
+    alert("Выберите точку на карте");
+    return;
+  }
+
+  await apiFetch("PUT",`/salons/${id}`,{
+    name:nameEl.value.trim(),
+    short_desc:descEl.value.trim(),
+    full_desc:descEl.value.trim(),
+    address:addressEl.value.trim(),
+    lat:lastCoords[0],
+    lng:lastCoords[1]
+  });
+
+  alert("Сохранено");
+  location.href="/admin/index.html";
+}
+
+saveBtn.onclick=saveSalon;
+
+loadSalon();
+
+})();
+</script>
+
+</body>
+</html>

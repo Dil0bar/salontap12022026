@@ -1,0 +1,201 @@
+<link rel="stylesheet" href="setup.css">
+<h1> Услуги</h1>
+
+<p> Добавьте услуги вашего салона </p>
+
+<div class="card step-card">
+
+    <div class="form-row">
+        <label>Категории</label>
+        <div id="serviceCategories" class="cat-grid"></div>
+    </div>
+
+
+  <div class="form-row">
+    <label>Название услуги</label>
+    <input id="serviceName" placeholder="Например: Маникюр">
+  </div>
+
+  <div class="form-row">
+    <label>Длительность (мин)</label>
+    <input id="serviceDuration" type="number" placeholder="Например: 60">
+ </div>
+
+
+  <button class="btn primary" onclick="addService()">
+    ➕ Добавить услугу
+  </button>
+
+  <div id="servicesList" class="services-grid"></div>
+
+  <div class="nav-buttons">
+    <button class="btn back" onclick="goBack()">← Назад</button>
+    <button id="nextBtn" class="btn finish" onclick="goNext()"></button>
+  </div>
+
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const salonId = params.get("salon_id");
+const token = localStorage.getItem("salon_token");
+const mode = params.get("mode") || "dashboard";
+let selectedCategories = [];
+
+
+const nextBtn = document.getElementById("nextBtn");
+
+
+document.addEventListener("change", (e) => {
+  if (e.target.closest("#serviceCategories")) {
+    selectedCategories = Array.from(
+      document.querySelectorAll("#serviceCategories input:checked")
+    ).map(i => (i.value));
+  }
+});
+
+// текст кнопки
+if (mode === "wizard") {
+  nextBtn.textContent = "Далее →";
+} else {
+  nextBtn.textContent = "Вернуться в дашборд";
+}
+
+// переход вперёд
+function goNext() {
+  if (mode === "wizard") {
+    location.href = `/admin/setup/schedule.html?salon_id=${salonId}&mode=wizard`;
+  } else {
+    location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+  }
+}
+
+// назад
+function goBack() {
+  if (mode === "wizard") {
+    location.href = `/admin/setup/masters.html?salon_id=${salonId}&mode=wizard`;
+  } else {
+    location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+  }
+}
+
+
+async function loadCategories() {
+  const cats = await fetch("/api/categories").then(r => r.json());
+
+  document.getElementById("serviceCategories").innerHTML =
+    cats.map(c => `
+      <label class="cat-chip">
+        <input type="checkbox" value="${c.title}">
+        ${c.title}
+      </label>
+    `).join("");
+}
+
+
+// ===== логика услуг =====
+
+async function loadServices() {
+  const services = await fetch(`/api/salons/${salonId}/services`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  renderServices(services);
+}
+
+function renderServices() {
+  const wrap = q("#services-list");
+
+  const list = allServices.filter(s => {
+    try {
+      const arr = JSON.parse(s.category || "[]");
+      return arr.includes(activeCategory);
+    } catch {
+      return false;
+    }
+  });
+
+  activeServiceIds = list.map(s => s.id);
+
+  wrap.innerHTML = list.map(s => `
+    <div class="service-card" data-id="${s.id}">
+      <div class="service-name">${s.name}</div>
+      <div class="service-time">${s.duration_minutes} мин</div>
+    </div>
+  `).join("");
+
+  qa(".service-card").forEach(card => {
+    card.onclick = () => {
+      const id = Number(card.dataset.id);
+      const service = allServices.find(s => s.id === id);
+
+      const idx = selectedServices.findIndex(s => s.id === id);
+
+      if (idx >= 0) {
+        selectedServices.splice(idx, 1);
+        card.classList.remove("active");
+      } else {
+        selectedServices.push(service);
+        card.classList.add("active");
+      }
+
+      console.log("SERVICES:", selectedServices);
+    };
+  });
+}
+
+
+async function addService() {
+  const name = serviceName.value.trim();
+  const duration = Number(serviceDuration.value);
+
+  if (!salonId) {
+    return alert("Нет salon_id в URL");
+  }
+
+  if (!name || !duration) {
+    return alert("Заполните все поля");
+  }
+
+  const res = await fetch("/api/services", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      salon_id: salonId,
+      name,
+      duration_minutes: duration,
+      categories: selectedCategories
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    return alert(data.error || "Ошибка сервера");
+  }
+
+  loadServices();
+}
+
+
+
+
+async function deleteService(id) {
+  if (!confirm("Удалить услугу?")) return;
+
+  await fetch(`/api/services/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+
+  loadServices();
+}
+
+loadServices();
+
+loadCategories();
+
+</script>

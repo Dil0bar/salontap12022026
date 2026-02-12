@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Админ — Салоны</title>
+  <link rel="stylesheet" href="../css/styles.css">
+
+</head>
+<body>
+<header class="site-header"><h1>Админ-панель</h1></header>
+
+<main class="container admin">
+  <!-- ================== AUTH ================== -->
+  <section id="auth-section" class="card auth-card">
+    <!-- LOGIN -->
+    <div id="login-form">
+      <h2>Войти</h2>
+
+      <label>Email:
+        <input id="login-email" type="email">
+      </label>
+
+      <label>Пароль:
+        <input id="login-password" type="password">
+      </label>
+
+      <button id="login-btn" class="btn primary">Войти</button>
+
+      <p>Нет аккаунта?
+        <a href="#" id="go-register">Создать аккаунт</a>
+      </p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-form" style="display:none;">
+      <h2>Регистрация</h2>
+
+      <label>Email:
+        <input id="reg-email" type="email">
+      </label>
+
+      <label>Пароль:
+        <input id="reg-password" type="password">
+      </label>
+
+      <button id="reg-btn" class="btn primary">Создать аккаунт</button>
+
+      <p>Уже есть аккаунт?
+        <a href="#" id="go-login">Войти</a>
+      </p>
+    </div>
+  </section>
+
+  <div id="auth-status"></div>
+
+  <!-- ================== CREATE SALON ================== -->
+  <section class="card create-card" style="display:none;">
+    <h2>Создать салон (только для авторизованных)</h2>
+
+    <label>Название
+      <input id="salon-name">
+    </label>
+
+    <label>Описание
+      <textarea id="salon-desc"></textarea>
+    </label>
+
+    <div class="categories-title">Выберите категории услуг вашего салона</div>
+
+    <div class="svc-categories">
+ 
+      <div id="categories-wrap" class="categories-grid"></div>
+
+
+
+      <div class="categories-title">Здесь вы можете создать свои категирии если не нашли его в списке</div>
+      <input id="catKey" placeholder="Общее название категории на английском massage_spa">
+      <input id="catTitle" placeholder="Общее название категории Массаж">
+      <input id="catItems" placeholder="Что в него входит пиши через запятую? Н-р тайский массаж,">
+
+      
+      <button
+        type="button"
+        class="btn btn-primary btn-add-category"
+        onclick="addCategory()">
+  
+        Добавить категорию
+      </button>
+
+    </div>
+
+    <label>Добавить фото (локально)
+      <input id="salon-photo" type="file" accept="image/*">
+    </label>
+
+    <label>Адрес салона
+      <input id="salon-address" placeholder="Например: Ташкент, Чиланзар, улица ..." autocomplete="off">
+    </label>
+
+    <div id="map-admin"
+         style="width:100%;height:300px;border-radius:12px;margin-top:10px;box-shadow:0 8px 16px rgba(0,0,0,0.08);">
+    </div>
+
+    <button id="create-salon" class="btn primary">Создать салон</button>
+    
+  </section>
+
+  <!-- ================== MY SALONS LIST ================== -->
+  <section id="admin-panel" class="card" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2>Управление салонами</h2>
+      <button id="logout-btn" class="btn danger" style="display:none;">Выйти</button>
+    </div>
+
+    <div id="admin-salons"></div>
+  </section>
+
+  <section id="edit-section" class="card" style="display:none;">
+      <h2>Редактирование салона</h2>
+
+      <input id="edit-name" placeholder="Название">
+      <textarea id="edit-desc" placeholder="Описание"></textarea>
+      <input id="edit-address" placeholder="Адрес">
+
+      <button id="save-edit" class="btn primary">Сохранить</button>
+  </section>
+
+  <hr>
+</main>
+
+
+
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=6cd194e0-41c7-41ad-956e-9ec538cd1c2d"></script>
+
+
+<script src="js/index.js"></script>
+</body>
+</html>

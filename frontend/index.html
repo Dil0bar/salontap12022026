@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="google-site-verification" content="9RFqG0APVUzeGYHX2pI7EXw_fVRwFkrZd9TDn57i5F4" />
+  
+  <title>Salon Tap — Онлайн запись в салоны красоты Ташкента</title>
+
+  <meta name="description" content="Salon Tap — удобная онлайн-платформа для поиска и записи в салоны красоты Ташкента. Маникюр, волосы, косметология, мастера рядом с вами.">
+  
+
+
+  <!-- Шрифты -->
+  <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&family=Playfair+Display&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/styles.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+<body>
+ <header class="site-header sticky">
+    <div class="header-inner">
+      <h1 class="logo">
+        <span class="salontap">Salon Tap</span>
+      </h1>
+
+      
+      <button class="burger" id="burgerBtn">
+         <span></span>
+      </button>
+
+       <!-- 🔍 Поиск в навбаре -->
+      <div class="nav-search">
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Поиск салона, услуги или мастера..."
+        />
+        <div id="search-results"></div>
+      </div>
+
+      
+
+      <nav class="header-nav">
+        <a class="nav-link" href="#about">О нас</a>
+        <a class="nav-link" href="#contacts">Контакты</a>
+        <a class="nav-link" href="https://t.me/jamilaabdukarimova">Помощь</a>
+      
+      </nav>
+
+     
+    </div>
+  </header>
+
+
+  <main class="container">
+    <!-- Описание сервиса -->
+    <section class="service-description">
+      <p>Добро пожаловать в <span class="salontap">Salon Tap</span> — ваш сервис для поиска и записи в лучшие салоны красоты!</p>
+    </section>
+
+    <!-- Заголовок Салоны -->
+    <h2 class="section-title">Салоны</h2>
+
+    <div id="category-filter">
+      <div class="category-buttons" id="categoriesBar"></div>
+    </div>
+
+
+    
+    
+    <!-- Список салонов -->
+    <section id="salon-list" class="salon-list">
+      <!-- Карточки будут добавляться через JS -->
+    </section>
+    <button id="nearNowBtn">Рядом сейчас</button>
+
+    
+
+    <div id="map"></div>
+    <div id="salon-list"></div>
+
+
+
+
+    <!-- ===== ABOUT SALONTAP ===== -->
+    <section class="section about-section" id="about"
+        itemscope itemtype="https://schema.org/SoftwareApplication">
+
+        <meta itemprop="name" content="SalonTap">
+        <meta itemprop="applicationCategory" content="BookingApplication">
+        <meta itemprop="operatingSystem" content="Web">
+
+        <div class="container about-card">
+
+          <span class="about-badge">О платформе</span>
+
+          <h2 class="about-title" itemprop="headline">
+            Salon Tap — умная платформа онлайн-записи
+          </h2>
+
+          <p class="about-text" itemprop="description">
+            <strong>Salon Tap</strong> — это умная платформа, которая соединяет
+            салоны красоты и клиентов в одном удобном пространстве.
+            Мы создаём прозрачный и простой способ записи без звонков и ожиданий.
+          </p>
+
+          <div class="about-features">
+
+        <!-- Живое расписание -->
+        <div class="about-feature">
+          <div class="about-icon">
+            <!-- calendar-days -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="17" rx="2"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div>
+            <strong>Живое расписание</strong>
+            <span>Свободное время мастеров в реальном времени</span>
+          </div>
+        </div>
+
+        <!-- Услуги и категории -->
+      <div class="about-feature">
+        <div class="about-icon">
+          <!-- heroicons: scissors -->
+          <svg xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+            <circle cx="6" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/>
+            <path d="M8.5 7.5L21 19"/>
+            <path d="M8.5 16.5L21 5"/>
+          </svg>
+        </div>
+
+        <div>
+          <strong>Услуги и категории</strong>
+          <span>Маникюр, волосы, косметология и другое</span>
+        </div>
+      </div>
+
+
+        <!-- Быстрая запись -->
+        <div class="about-feature">
+          <div class="about-icon">
+            <!-- bolt -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+            </svg>
+          </div>
+          <div>
+            <strong>Быстрая запись</strong>
+            <span>За несколько кликов без регистрации</span>
+          </div>
+        </div>
+
+        <!-- Удобно всем -->
+        <div class="about-feature">
+          <div class="about-icon">
+            <!-- chart-bar -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="19" x2="4" y2="5"/>
+              <line x1="10" y1="19" x2="10" y2="9"/>
+              <line x1="16" y1="19" x2="16" y2="3"/>
+              <line x1="22" y1="19" x2="2" y2="19"/>
+            </svg>
+          </div>
+          <div>
+            <strong>Удобно всем</strong>
+            <span>И салонам, и клиентам</span>
+          </div>
+        </div>
+
+      </div>
+
+        
+
+        </div>
+      </section>
+
+      <section class="section contacts-section" id="contacts">
+        <div class="container contacts-card">
+
+          <span class="about-badge">Контакты</span>
+
+          <h2 class="contacts-title">
+            Свяжитесь с Salon Tap
+          </h2>
+
+          <p class="contacts-text">
+            Мы всегда на связи — пишите нам в соцсетях или звоните.
+          </p>
+
+          <div class="contacts-grid">
+
+            <a href="https://www.instagram.com/salontap.uz" target="_blank" class="contact-item">
+              <div class="contact-icon instagram">
+                <!-- Heroicons: camera -->
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="4"/>
+                  <circle cx="12" cy="12" r="4"/>
+                  <circle cx="17.5" cy="6.5" r="1"/>
+                </svg>
+              </div>
+              <div>
+                <strong>Instagram</strong>
+                <span>@salontap.uz</span>
+              </div>
+            </a>
+
+            <a href="https://t.me/salontap_uz" target="_blank" class="contact-item">
+              <div class="contact-icon telegram">
+                <!-- Heroicons: paper-airplane -->
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M3 11.5L21 3l-6 18-3-7-9-2.5z"/>
+                </svg>
+              </div>
+              <div>
+                <strong>Telegram</strong>
+                <span>@salontap_uz</span>
+              </div>
+            </a>
+
+            <a href="tel:+998888117799" class="contact-item">
+              <div class="contact-icon phone">
+                <!-- Heroicons: phone -->
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M5 4h4l2 5-3 2a14 14 0 006 6l2-3 5 2v4c0 1-1 2-2 2C9 22 2 15 2 6c0-1 1-2 2-2z"/>
+                </svg>
+              </div>
+              <div>
+                <strong>Телефон</strong>
+                <span>+998888117799</span>
+              </div>
+            </a>
+
+            <a href="https://t.me/jamilaabdukarimova" target="_blank" class="contact-item">
+              <div class="contact-icon person">
+                <!-- Heroicons: user -->
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+                </svg>
+              </div>
+              <div>
+                <strong>Контактное лицо</strong>
+                <span>Jamila Abdukarimova</span>
+              </div>
+            </a>
+
+          </div>
+
+        </div>
+      </section>
+
+
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="container footer-inner">
+
+    <div class="footer-brand">
+      <div class="footer-logo">Salon Tap</div>
+      <p class="footer-desc">
+        Умная платформа онлайн-записи в салоны красоты.
+      </p>
+    </div>
+
+    <div class="footer-links">
+      <a href="#about">О платформе</a>
+      <a href="#contacts">Контакты</a>
+      <a href="https://t.me/jamilaabdukarimova" target="_blank">Поддержка</a>
+    </div>
+
+    <div class="footer-social">
+      <a href="https://www.instagram.com/salontap.uz" target="_blank">Instagram</a>
+      <a href="https://t.me/salontap_uz" target="_blank">Telegram</a>
+      <a href="tel:+998888117799">+998888117799</a>
+    </div>
+
+  </div>
+
+
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+
+  <script src="js/index.js"></script>
+
+  
+</body>
+</html>

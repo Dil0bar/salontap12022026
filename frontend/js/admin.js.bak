@@ -1,0 +1,106 @@
+
+// admin.js - upgraded to use backend auth and API, with fallback to localStorage if backend unavailable
+(function(){
+  const API_PREFIX = '/api';
+  const tokenKey = 'salon_token';
+
+  function parseJwt(token){
+    try {
+      const payload = token.split('.')[1];
+      const json = atob(payload.replace(/-/g,'+').replace(/_/g,'/'));
+      return JSON.parse(decodeURIComponent(escape(json)));
+    } catch(e){ return null; }
+  }
+
+  
+async function apiFetch(method, path, body){
+  const headers = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('salon_token');
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch('/api' + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(()=>null);
+  if (!res.ok) throw { status: res.status, data };
+  return data;
+}
+
+
+  // UI elements
+  const loginEmail = document.getElementById('login-email');
+  const loginPass = document.getElementById('login-password');
+  const loginBtn = document.getElementById('login-btn');
+  const regEmail = document.getElementById('reg-email');
+  const regPass = document.getElementById('reg-password');
+  const regBtn = document.getElementById('reg-btn');
+  const authStatus = document.getElementById('auth-status');
+
+  const nameEl = document.getElementById('salon-name');
+  const descEl = document.getElementById('salon-desc');
+  const photoInput = document.getElementById('salon-photo');
+  const createBtn = document.getElementById('create-salon');
+  const listWrap = document.getElementById('admin-salons');
+
+  const bookingsModal = document.getElementById('bookings-modal');
+  const bookingsList = document.getElementById('bookings-list');
+  const closeBookings = document.getElementById('close-bookings');
+
+  let pendingPhoto = null;
+
+  photoInput.addEventListener('change', (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=> pendingPhoto = r.result;
+    r.readAsDataURL(f);
+  });
+
+  loginBtn.addEventListener('click', async ()=>{
+    try {
+      const data = await apiFetch('POST','/login',{ email: loginEmail.value, password: loginPass.value });
+      if (data.token) {
+        localStorage.setItem(tokenKey, data.token);
+        showStatus('Вход выполнен');
+        renderList();
+      } else showStatus('Не удалось войти');
+    } catch(e){
+      showStatus('Ошибка входа: ' + (e.data?.error || e.status || 'network'));
+    }
+  });
+
+  regBtn.addEventListener('click', async ()=>{
+    try {
+      const data = await apiFetch('POST','/signup',{ email: regEmail.value, password: regPass.value });
+      if (data.token) {
+        localStorage.setItem(tokenKey, data.token);
+        showStatus('Регистрация прошла, вы вошли');
+        renderList();
+      } else showStatus('Не удалось зарегистрироваться');
+    } catch(e){
+      showStatus('Ошибка регистрации: ' + (e.data?.error || e.status || 'network'));
+    }
+  });
+
+  function showStatus(t){ authStatus.textContent = t; setTimeout(()=>authStatus.textContent='',4000); }
+
+  createBtn.addEventListener('click', async ()=>{
+    const name = nameEl.value.trim(); if(!name){ alert('Введите имя салона'); return; }
+    const payload = { name, short_desc: descEl.value, full_desc: descEl.value, address: '' };
+    if (pendingPhoto) payload.photos = [pendingPhoto];
+    const token = localStorage.getItem('salon_token');
+    if (token) {
+      try {
+        const data = await apiFetch('POST','/salons', payload);
+        alert('Салон создан: #' + data.salon_id);
+        nameEl.value=''; descEl.value=''; pendingPhoto=null;
+        renderList();
+      } catch(e){
+        alert('Ошибка при создании салона: ' + (e.data?.error || e.status));
+      }
+    } else {
+      const s = { name, desc: descEl.value, photos: pendingPhoto?[pendingPhoto]:[], masters: [], bookings: [] };
+      const created = SalonStore.addSalon(s);
+      alert('Салон создан локально: #' + created.id);
+      renderList();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', renderList);
+})();

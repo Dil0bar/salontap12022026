@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Super Admin</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f6f8;
+      padding: 40px;
+    }
+
+    
+    .box {
+      max-width: 400px;
+      margin: 60px auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+    }
+    button {
+      background: #111827;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    th { background: #111827; color: #fff; }
+    button {
+      padding: 4px 8px;
+      margin: 2px;
+    }
+    select {
+      padding: 4px;
+    }
+    .hidden { display: none; }
+    .error { color: #c00; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <h2>Вход в Super Admin</h2>
+  <input id="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Пароль" />
+  <button onclick="login()">Войти</button>
+  <div class="error" id="loginError"></div>
+</div>
+
+<!-- NO ACCESS -->
+<div class="box hidden" id="noAccessBox">
+ <h2>👑 Super Admin — Users</h2>
+
+<table id="usersTable">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Created</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>🧾 Audit log</h3>
+<pre id="logs"></pre>
+</div>
+
+<!-- SUPER ADMIN PANEL -->
+<div class="box hidden" id="adminBox">
+  <h2>✅ Super Admin Panel</h2>
+  <p>Добро пожаловать!</p>
+
+  <button onclick="loadUsers()">Загрузить пользователей</button>
+  <pre id="output"></pre>
+</div>
+
+<script src="superadmin.js"></script>
+</body>
+</html>

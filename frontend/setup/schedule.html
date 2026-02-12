@@ -1,0 +1,133 @@
+<link rel="stylesheet" href="setup.css">
+
+<h1 class="step-title">Расписание</h1>
+
+<div class="card step-card">
+
+  <div class="form-row">
+    <label>Мастер</label>
+    <select id="slotMaster"></select>
+  </div>
+
+  <div class="form-row">
+    <label>Услуга</label>
+    <select id="slotService"></select>
+  </div>
+
+  <div class="form-row">
+    <label>Цена (сум)</label>
+    <input id="servicePrice" type="number" placeholder="Например: 150000">
+  </div>
+
+  <div class="form-row">
+    <label>Дата</label>
+    <input type="date" id="slotDate">
+  </div>
+
+  <div class="form-row">
+    <label>Время (через запятую)</label>
+    <input id="slotTimes" placeholder="10:00, 11:30, 14:00">
+  </div>
+
+  <button class="btn primary" onclick="addSchedule()">
+    ➕ Добавить слоты
+  </button>
+
+  <div class="nav-buttons">
+    <button class="btn-back" onclick="goBack()">← Назад</button>
+    <button class="btn-done" onclick="finish()">Завершить</button>
+  </div>
+
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const salonId = params.get("salon_id");
+const token = localStorage.getItem("salon_token");
+let servicesCache = [];
+
+async function loadForm() {
+  const salon = await fetch(`/api/salons/${salonId}`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  const services = await fetch(`/api/salons/${salonId}/services`, {
+    headers: { Authorization: "Bearer " + token }
+  }).then(r => r.json());
+
+  servicesCache = services;
+
+  slotMaster.innerHTML =
+    salon.masters.map(m =>
+      `<option value="${m.id}">${m.name}</option>`
+    ).join("");
+
+  slotService.innerHTML =
+    services.map(s =>
+      `<option value="${s.id}">${s.name}</option>`
+    ).join("");
+
+  slotService.dispatchEvent(new Event("change"));
+}
+
+slotService.addEventListener("change", () => {
+  const id = Number(slotService.value);
+  const s = servicesCache.find(x => x.id === id);
+
+  if (s && s.price) {
+    servicePrice.value = s.price;
+  } else {
+    servicePrice.value = "";
+  }
+});
+
+async function addSchedule() {
+  const master_id = Number(slotMaster.value);
+  const service_id = Number(slotService.value);
+  const date = slotDate.value;
+  const price = Number(servicePrice.value);
+
+  const times = slotTimes.value
+    .split(",")
+    .map(t => t.trim())
+    .filter(Boolean);
+
+  if (!master_id || !service_id || !date || !times.length || !price) {
+    return alert("Заполните все поля");
+  }
+
+  // ВАЖНО: price реально отправляется
+  const slots = times.map(t => ({
+    date,
+    time: t,
+    price
+  }));
+
+  const res = await fetch(`/api/masters/${master_id}/schedule`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      service_id,
+      slots
+    })
+  });
+
+  const data = await res.json();
+  console.log("RESPONSE:", data);
+
+  alert("Слоты добавлены");
+}
+
+loadForm();
+
+function goBack() {
+  location.href = `/admin/setup/services.html?salon_id=${salonId}`;
+}
+
+function finish() {
+  location.href = `/admin/dashboard.html?salon_id=${salonId}`;
+}
+</script>
